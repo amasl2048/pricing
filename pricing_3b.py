@@ -10,10 +10,11 @@
 '''
 import sys
 import yaml
-from pandas import read_csv, DataFrame
+from pandas import read_csv
+from numpy import loadtxt
 
 Conf = yaml.load(open("pricing_conf.yml"))
-cross = Conf["cross"]    # кросс-курс eur/usd
+cross = Conf["cross"]   # кросс-курс eur/usd
 kz = Conf["kz"]  # множитель KZ
 
 #file = sys.argv[1]
@@ -22,6 +23,21 @@ msrp = read_csv(file, ";", header=0, index_col=False)
 
 #par_file = sys.argv[2]
 par_file = "partners2.yml"
+
+cat1 = loadtxt(Conf["cat1.csv"], dtype=str, usecols=(0,))
+cat2 = loadtxt(Conf["cat2.csv"], dtype=str, usecols=(0,))
+
+def change_catalog1(df):
+    if (df["partnum"] in cat1): df["partcatalog"] = Conf["new1"]
+    return df
+
+def change_catalog2(df):
+    if (df["partnum"] in cat2): df["partcatalog"] = Conf["new2"]
+    return df
+
+msrp = msrp.apply(change_catalog1, axis = 1)
+msrp = msrp.apply(change_catalog2, axis = 1)
+
 
 #Product = sys.argv[2]
 f = lambda x: round(x, 2)
@@ -103,8 +119,8 @@ buy.loc[:, "Ref."] = msrp["partrefp"]
 buy.loc[:, "Trans."] = msrp["partxferbasep"]
 
 # summary table for approval
-print buy
+#print buy
 buy.to_excel("./Buy_prices.xls", index=False)
 
-print "Ex-rate EUR/UED:", cross
+print "Ex-rate EUR/USD:", cross
 raw_input()
