@@ -13,31 +13,24 @@ import yaml
 from pandas import read_csv
 from numpy import loadtxt
 
-Conf = yaml.load(open("pricing_conf.yml"))
-cross = Conf["cross"]   # кросс-курс eur/usd
+print "Starting..."
+
+Conf = yaml.load(open("base/pricing_conf.yml"))
+cross = Conf["cross"]    # кросс-курс eur/usd
 kz = Conf["kz"]  # множитель KZ
 
-#file = sys.argv[1]
-file = "msrp_dot.csv"
+file = sys.argv[1]
+#file = "msrp_dot.csv"
 msrp = read_csv(file, ";", header=0, index_col=False)
 
-#par_file = sys.argv[2]
-par_file = "partners2.yml"
+par_file = sys.argv[2]
+#par_file = "partners2.yml"
 
 cat1 = loadtxt(Conf["cat1.csv"], dtype=str, usecols=(0,))
-cat2 = loadtxt(Conf["cat2.csv"], dtype=str, usecols=(0,))
-
 def change_catalog1(df):
     if (df["partnum"] in cat1): df["partcatalog"] = Conf["new1"]
     return df
-
-def change_catalog2(df):
-    if (df["partnum"] in cat2): df["partcatalog"] = Conf["new2"]
-    return df
-
 msrp = msrp.apply(change_catalog1, axis = 1)
-msrp = msrp.apply(change_catalog2, axis = 1)
-
 
 #Product = sys.argv[2]
 f = lambda x: round(x, 2)
@@ -67,7 +60,7 @@ def catalog(Company, cat):
     Get discount value from partcatalog
     '''
     if (cat in Par[Company]['discount'].keys() ): return cat
-    if (cat in Conf.keys() ): return Conf[cat]
+    if (cat in Conf['catalog'].keys() ): return Conf['catalog'][cat]
     else:
         print "ERROR name!", cat, Company
         sys.exit(0)
@@ -84,6 +77,7 @@ def minus(Series):
     
 buy = lmsrp_ru[["Part Number", "Designation EN"]]
 for Company in Partners:
+    print Company
     Pcode = Par[Company]["p_code"]
     Disc = msrp.apply(disc_calc, axis = 1)
     Disc = Disc.apply(minus)
