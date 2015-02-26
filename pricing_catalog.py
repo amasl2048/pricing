@@ -44,6 +44,7 @@ part = part.apply(change_catalog1, axis = 1)
 part = part.set_index("partnum")
 
 #part["PG"] = category["Product Group"]
+part = part.rename(columns={"partdisc": "Product Group"})
 part["Material Category Name"] = category["Material Category Name"]
 
 def catalog(Company, cat):
@@ -77,7 +78,12 @@ for each in mcn:
 
 print mcn.size
 
-pgroup = part["partdisc"].unique()
+pgroup = part["Product Group"].unique()
 print pgroup.size
 
 part.to_excel("./all_categories.xls", index=True)
+
+# change index
+a = part.set_index("Product Group")
+a.sort_index(inplace=True)
+a.to_excel("./groups.xls", index=True)
