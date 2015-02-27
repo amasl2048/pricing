@@ -9,7 +9,8 @@ import sys
 import yaml
 import pandas as pd
 #from pandas import read_csv
-from numpy import loadtxt
+from numpy import loadtxt, unique
+#import csv
 
 print "Starting..."
 
@@ -23,12 +24,12 @@ category_conf = yaml.load(open("./base/category_conf.yml"))
 
 pfile = category_conf["part_file"]
 xl1 = pd.ExcelFile(pfile)
-print xl1.sheet_names
+#print xl1.sheet_names
 part = xl1.parse(category_conf["part_sheet"])#, index_col = "partnum")
 
 cat_file = category_conf["cat_file"]
 xl2 = pd.ExcelFile(cat_file)
-print xl2.sheet_names
+#print xl2.sheet_names
 category = xl2.parse(category_conf["cat_sheet"])#, index_col = "Part Number")
 category = category.rename(columns={"Part Number": "partnum"})
 category = category.set_index("partnum")
@@ -46,6 +47,7 @@ part = part.set_index("partnum")
 #part["PG"] = category["Product Group"]
 part = part.rename(columns={"partdisc": "Product Group"})
 part["Material Category Name"] = category["Material Category Name"]
+part["LMSRP"] = category["Price [EUR]"]
 
 def catalog(Company, cat):
     '''
@@ -73,17 +75,30 @@ for Company in Partners:
 #print part.head()
 
 mcn = part["Material Category Name"].unique()
+'''
 for each in mcn:
     print each
-
 print mcn.size
+'''
 
 pgroup = part["Product Group"].unique()
-print pgroup.size
+pgroup.sort()
 
-part.to_excel("./all_categories.xls", index=True)
+
+'''
+for row in pgroup:
+    print row
+print pgroup.size
+'''
+
+#part.to_excel("./all_categories.xls", index=True)
 
 # change index
 a = part.set_index("Product Group")
 a.sort_index(inplace=True)
 a.to_excel("./groups.xls", index=True)
+
+b = a[["partcatalog","Material Category Name"]]
+b = b.reset_index()
+b = b.drop_duplicates()
+b.to_excel("./groups_unique.xls", index=False)
