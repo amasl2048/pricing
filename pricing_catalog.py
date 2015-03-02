@@ -47,7 +47,7 @@ part = part.set_index("partnum")
 #part["PG"] = category["Product Group"]
 part = part.rename(columns={"partdisc": "Product Group"})
 part["Material Category Name"] = category["Material Category Name"]
-part["LMSRP"] = category["Price [EUR]"]
+#part["LMSRP"] = category["Price [EUR]"]
 
 def catalog(Company, cat):
     '''
@@ -59,7 +59,18 @@ def catalog(Company, cat):
         print "ERROR name!", cat, Company
         sys.exit(0)
     return
-    
+
+def part2group(Series):
+    '''
+    Get discont name from partcatalog
+    '''
+    if (Series in Par[Company]['discount'].keys() ): return Series
+    if (Series in Conf['catalog'].keys() ): return Conf['catalog'][Series]
+    else:
+        print "ERROR name!", Series
+        sys.exit(0)
+    return
+
 def disc_calc(Series):
     return Par[Company]["discount"][catalog(Company,Series["partcatalog"])]
 
@@ -71,8 +82,8 @@ for Company in Partners:
     Disc = Disc[ Disc >= 0 ] # delete empty price items
     Disc = Disc.apply(na) # delete "NA"
     part[Company] = Disc * 100
-
 #print part.head()
+part["Disc. group"] = part["partcatalog"].apply(part2group)
 
 mcn = part["Material Category Name"].unique()
 '''
@@ -96,9 +107,9 @@ print pgroup.size
 # change index
 a = part.set_index("Product Group")
 a.sort_index(inplace=True)
-a.to_excel("./groups.xls", index=True)
+a.to_excel("./groups4.xls", index=True)
 
 b = a[["partcatalog","Material Category Name"]]
 b = b.reset_index()
 b = b.drop_duplicates()
-b.to_excel("./groups_unique.xls", index=False)
+#b.to_excel("./groups_unique.xls", index=False)
