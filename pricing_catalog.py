@@ -22,6 +22,24 @@ Partners = Par.keys()
 
 category_conf = yaml.load(open("./base/category_conf.yml"))
 
+group_file = category_conf["group_file"]
+groups = pd.ExcelFile(group_file).parse(category_conf["group_sheet"])
+
+c = groups[["Product Group", "Material Category Name", "Disc. group"]]
+c = c.drop_duplicates()
+#c.to_excel("./groups_unique3.xls", index=False)
+
+def mba(Series):
+    s = "MBA"
+    if (Series in category_conf["new_cat"]): return s
+    return Series
+
+d = groups[["Product Group", "Disc. group"]]
+d["Disc. group"] = groups["Disc. group"].apply(mba)
+d = d.drop_duplicates()
+d.to_excel("./groups_unique4.xls", index=False)
+
+
 pfile = category_conf["part_file"]
 xl1 = pd.ExcelFile(pfile)
 #print xl1.sheet_names
@@ -47,7 +65,7 @@ part = part.set_index("partnum")
 #part["PG"] = category["Product Group"]
 part = part.rename(columns={"partdisc": "Product Group"})
 part["Material Category Name"] = category["Material Category Name"]
-#part["LMSRP"] = category["Price [EUR]"]
+part["LMSRP"] = category["Price [EUR]"]
 
 def catalog(Company, cat):
     '''
@@ -107,9 +125,12 @@ print pgroup.size
 # change index
 a = part.set_index("Product Group")
 a.sort_index(inplace=True)
-a.to_excel("./groups4.xls", index=True)
+#a.to_excel("./groups5.xls", index=True)
 
 b = a[["partcatalog","Material Category Name"]]
 b = b.reset_index()
 b = b.drop_duplicates()
-#b.to_excel("./groups_unique.xls", index=False)
+#b.to_excel("./groups_unique2.xls", index=False)
+
+print "Done."
+#raw_input()
