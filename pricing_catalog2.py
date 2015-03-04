@@ -2,15 +2,14 @@
 # -*- coding: utf-8 -*-
 '''
 Combine Product Group, Material Category Name and Disc.
+Calculate prices based on new groups
 
 2015 Feb
 '''
 import sys
 import yaml
 import pandas as pd
-#from pandas import read_csv
 from numpy import loadtxt, unique
-#import csv
 
 print "Starting..."
 
@@ -46,14 +45,12 @@ d = d["Disc. group"]
 
 pfile = category_conf["part_file"]
 xl1 = pd.ExcelFile(pfile)
-#print xl1.sheet_names
 part = xl1.parse(category_conf["part_sheet"])#, index_col = "partnum")
 part = part.rename(columns={"partdisc": "Product Group"})
 
 # Category file
 cat_file = category_conf["cat_file"]
 xl2 = pd.ExcelFile(cat_file)
-#print xl2.sheet_names
 category = xl2.parse(category_conf["export"])#, index_col = "Part Number")
 category = category.rename(columns={"Part Number": "partnum"})
 category = category.set_index("partnum")
@@ -73,15 +70,29 @@ part["New disc"] = part["Product Group"].apply(new_disc)
 part = part.set_index("partnum")
 part["old_dist_buy"] = dist["Price [USD]"]
 part["old_si_buy"] = si["Price [EUR]"]
+part["Material Category Name"] = category["Material Category Name"]
+part["LMSRP"] = category["Price [EUR]"]
 
 def min_price(df):
     if (df["old_dist_buy"]/Conf["cross"] < df["old_si_buy"] ): return df["old_dist_buy"]/Conf["cross"]
     else: return df["old_si_buy"]
 
-part["min_buy_eur"] = part.apply(min_price, axis = 1).apply(f)
-#part["new LMSRP"] = 
-part["Material Category Name"] = category["Material Category Name"]
-part["LMSRP"] = category["Price [EUR]"]
+def k_ref(df):
+    if (df["partrefp"] > 0): 
+        k = df["min_buy_eur"]/df["partrefp"]
+        if (k < 1.099): return k
+
+def new_lmsrp(df):
+    dist_eur = df["old_dist_buy"]/Conf["cross"]
+    if ( dist_eur < df["old_si_buy"] ): min = dist_eur
+    else: min = df["old_si_buy"]
+    if (df["New disc"] == "Terminals-SIP"): return min / (1 - category_conf["max_disc_sip"])
+    else: return min / (1 - category_conf["max_disc"])
+
+part["min_buy_eur"] = part.apply(min_price, axis = 1)#.apply(f)
+part["k"] = part.apply(k_ref, axis = 1).apply(f)
+part["new LMSRP"] = part.apply(new_lmsrp, axis = 1).apply(f)
+part["diff LMSRP"] = part["new LMSRP"] - part["LMSRP"]
 
 def disc_calc(df):
     new_grp = d.loc[df["Product Group"]]
@@ -102,10 +113,13 @@ for Company in Partners:
     Disc = Disc.apply(na) # delete "NA"
     #part[Company] = Disc * 100 # 100%
     if ("USD" not in Company):
-        part[Company] = part["LMSRP"] * Disc.apply(minus)
+        part[Company] = part["new LMSRP"] * Disc.apply(minus)
     else:
-        part[Company] = part["LMSRP"] * Disc.apply(minus) * Conf["cross"]
+        part[Company] = part["new LMSRP"] * Disc.apply(minus) * Conf["cross"]
     part[Company] = part[Company].apply(f)
+
+part["diff_si_buy"] = part[category_conf["gold_si"]] - part["old_si_buy"]
+part["diff_dist_buy"] = part[category_conf["gold_dist"]] - part["old_dist_buy"]
 
 #part.to_excel("./all_categories.xls", index=True)
 
@@ -122,9 +136,11 @@ pgroup.sort()
 for row in pgroup:
     print row
 '''
-print "Product unique groups: ", pgroup.size
+print "Items: ", part.index.size
+print "Product groups: ", pgroup.size
 
-# change index
+# Change index
+part.reset_index(inplace = True)
 a = part.set_index("Product Group")
 a.sort_index(inplace=True)
 a.to_excel("./groups6.xls", index=True)
