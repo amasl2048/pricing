@@ -111,7 +111,7 @@ for Company in Partners:
     Disc = part.apply(disc_calc, axis = 1)
     Disc = Disc[ Disc >= 0 ] # delete empty price items
     Disc = Disc.apply(na) # delete "NA"
-    #part[Company] = Disc * 100 # 100%
+    if (Company == "Distr.(Bronze) EUR"): discounts = Disc * 100 # 100%
     if ("USD" not in Company):
         part[Company] = part["new LMSRP"] * Disc.apply(minus)
     else:
@@ -140,16 +140,21 @@ print "Items: ", part.index.size
 print "Product groups: ", pgroup.size
 
 # Change index
+b = part[["Product Group", "Material Category Name"]]
+b["discounts"] = discounts
+print b.head()
 part.reset_index(inplace = True)
 a = part.set_index("Product Group")
 a.sort_index(inplace=True)
-a.to_excel("./groups6.xls", index=True)
+#a.to_excel("./groups6.xls", index=True)
 
 # Unique product groups
-b = a[["partcatalog","Material Category Name"]]
-b = b.reset_index()
+b.set_index("Product Group", inplace = True)
+b.sort_index(inplace=True)
+b.reset_index(inplace = True)
+print b.head()
 b = b.drop_duplicates()
-#b.to_excel("./groups_unique2.xls", index=False)
+b.to_excel("./groups_unique3.xls", index=False)
 
 print "Done."
 #raw_input()
