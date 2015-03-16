@@ -36,16 +36,21 @@ def mba(Series):
     if (Series in category_conf["new_cat"]): return s
     return Series
 
+# Prepare dependence discount group from product group
+'''
 d = groups[["Product Group", "Disc. group"]]
 d["Disc. group"] = groups["Disc. group"].apply(mba)
 d = d.drop_duplicates()
 #d.to_excel("./groups_unique4.xls", index=False)
 d = d.set_index("Product Group")
 d = d["Disc. group"]
+'''
+# Read prepared product groups discounts
+d = pd.ExcelFile("./base/groups_unique4.xls").parse("Sheet1")
+d = d.set_index("Product Group")
+d = d["Disc. group"]
 
-pfile = category_conf["part_file"]
-xl1 = pd.ExcelFile(pfile)
-part = xl1.parse(category_conf["part_sheet"])#, index_col = "partnum")
+part = pd.ExcelFile(category_conf["part_file"]).parse(category_conf["part_sheet"])
 part = part.rename(columns={"partdisc": "Product Group"})
 
 # Category file
@@ -154,7 +159,7 @@ b.sort_index(inplace=True)
 b.reset_index(inplace = True)
 print b.head()
 b = b.drop_duplicates()
-b.to_excel("./groups_unique3.xls", index=False)
+#b.to_excel("./bronze_dist.xls", index=False)
 
 print "Done."
 #raw_input()
