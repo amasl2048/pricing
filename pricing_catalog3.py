@@ -2,14 +2,13 @@
 # -*- coding: utf-8 -*-
 '''
 Combine Product Group, Material Category Name and Disc.
-Check koef. k and calc new buy_p
+Check koef. k and calc new k_new & buy_p
 
-2015 Feb
+2015 March
 '''
-import sys
 import yaml
 import pandas as pd
-from numpy import loadtxt, unique
+#from numpy import unique
 
 print "Starting..."
 
@@ -87,24 +86,41 @@ def k_ref(df):
         k = df["min_buy_eur"]/df["partrefp"]
         #if (k < 1.099): return k
         return k
+    elif (df["partrefp"] == 0):
+        return 0
 
 def new_lmsrp(df):
     dist_eur = df["old_dist_buy"]/Conf["cross"]
     if ( dist_eur < df["old_si_buy"] ): min = dist_eur
     else: min = df["old_si_buy"]
-    if (df["New disc"] == "Terminals-SIP"): return min / (1 - category_conf["max_disc_sip"])
+    if (df["New disc"] == category_conf["special_catalog"]): return min / (1 - category_conf["max_disc_sip"])
     else: return min / (1 - category_conf["max_disc"])
 
 def k_new(df):
-    if (df["k"]) > 2: return df["k"]/2
+    if (df["Material Category Name"] == category_conf["category_1"]):
+        if ( df["k"] > 2 ): return 2
+        elif ( df["k"] == 0): return 0
+        elif ( df["k"] < 1.1): return 1.1
+        return df["k"]
+    if ( category_conf["category_2"] in df["Material Category Name"]):
+        if (df["New disc"] == category_conf["product_1"]):
+            if ( df["k"] > 1.1 ): return 1.1
+            elif ( df["k"] == 0): return 0
+            elif ( df["k"] < 1.1): return 1.1
+            return df["k"]
+        else:
+            if ( df["k"] > 1.24 ): return 1.24
+            elif ( df["k"] == 0): return 0
+            elif ( df["k"] < 1.1): return 1.1
+            return df["k"]
     return df["k"]
 
 part["min_buy_eur"] = part.apply(min_price, axis = 1)#.apply(f)
 part["k"] = part.apply(k_ref, axis = 1).apply(f)
 part["k_new"] = part.apply(k_new, axis = 1).apply(f)
 part["buy_new"] = part["partrefp"] * part["k_new"]
-#part["new LMSRP"] = part.apply(new_lmsrp, axis = 1).apply(f)
-#part["diff LMSRP"] = part["new LMSRP"] - part["LMSRP"]
+part["new LMSRP"] = part.apply(new_lmsrp, axis = 1)#.apply(f)
+part["diff LMSRP"] = part["new LMSRP"] - part["LMSRP"]
 
 def disc_calc(df):
     new_grp = d.loc[df["Product Group"]]
@@ -119,12 +135,11 @@ def minus(Series):
     '''
     if (Series != "NA"): return 1 - Series
 
-'''
 for Company in Partners:
     Disc = part.apply(disc_calc, axis = 1)
     Disc = Disc[ Disc >= 0 ] # delete empty price items
     Disc = Disc.apply(na) # delete "NA"
-    if (Company == "Distr.(Bronze) EUR"): discounts = Disc * 100 # 100%
+    #if (Company == "Distr.(Bronze) EUR"): discounts = Disc * 100 # 100%
     if ("USD" not in Company):
         part[Company] = part["new LMSRP"] * Disc.apply(minus)
     else:
@@ -134,15 +149,15 @@ for Company in Partners:
 
 part["diff_si_buy"] = part[category_conf["gold_si"]] - part["old_si_buy"]
 part["diff_dist_buy"] = part[category_conf["gold_dist"]] - part["old_dist_buy"]
-'''
+
 #part.to_excel("./all_categories.xls", index=True)
 
 mcn = part["Material Category Name"].unique()
-'''
+
 for each in mcn:
     print each
 print mcn.size
-'''
+
 
 pgroup = part["Product Group"].unique()
 pgroup.sort()
@@ -162,7 +177,7 @@ part.reset_index(inplace = True)
 #a = part.set_index("Product Group")
 a = part.set_index("partnum")
 a.sort_index(inplace=True)
-a.to_excel("./groups6.xls", index=True)
+a.to_excel("./groups7.xls", index=True)
 
 
 # Unique product groups
