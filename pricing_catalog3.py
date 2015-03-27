@@ -79,7 +79,8 @@ part["LMSRP"] = category["Price [EUR]"]
 
 def min_price(df):
     if (df["old_dist_buy"]/Conf["cross"] < df["old_si_buy"] ): return df["old_dist_buy"]/Conf["cross"]
-    else: return df["old_si_buy"]
+    #elif: (df["old_si_buy"] == ""): return 
+    return df["old_si_buy"]
 
 def k_ref(df):
     if (df["partrefp"] > 0): 
@@ -89,6 +90,10 @@ def k_ref(df):
     elif (df["partrefp"] == 0):
         return 0
 
+def buy_01(Series):
+    if (Series == 0): return 0.01
+    return Series
+    
 def new_lmsrp(df):
     dist_eur = df["old_dist_buy"]/Conf["cross"]
     if ( dist_eur < df["old_si_buy"] ): min = dist_eur
@@ -119,7 +124,8 @@ part["min_buy_eur"] = part.apply(min_price, axis = 1)#.apply(f)
 part["k"] = part.apply(k_ref, axis = 1).apply(f)
 part["k_new"] = part.apply(k_new, axis = 1).apply(f)
 part["buy_new"] = part["partrefp"] * part["k_new"]
-part["new LMSRP"] = part.apply(new_lmsrp, axis = 1)#.apply(f)
+part["buy_new"] = part["buy_new"].apply(buy_01)
+part["new LMSRP"] = part.apply(new_lmsrp, axis = 1).apply(f)
 part["diff LMSRP"] = part["new LMSRP"] - part["LMSRP"]
 
 def disc_calc(df):
