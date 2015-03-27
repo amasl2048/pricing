@@ -12,13 +12,14 @@ import pandas as pd
 
 print "Starting..."
 
-Conf = yaml.load(open("./base/pricing_conf2.yml"))
+#Conf = yaml.load(open("./base/pricing_conf2.yml"))
 
-par_file = "./base/partners4.yml"
-Par = yaml.load(open(par_file))
+Par = yaml.load(open("./base/partners4.yml"))
 Partners = Par.keys()
 
 category_conf = yaml.load(open("./base/category_conf.yml"))
+cross = category_conf["cross"]
+#kz = category_conf["kz"]
 
 dist = pd.ExcelFile(category_conf["dist_file"]).parse(category_conf["export"], index_col = "Part Number")
 
@@ -78,7 +79,7 @@ part["Material Category Name"] = category["Material Category Name"]
 part["LMSRP"] = category["Price [EUR]"]
 
 def min_price(df):
-    if (df["old_dist_buy"]/Conf["cross"] < df["old_si_buy"] ): return df["old_dist_buy"]/Conf["cross"]
+    if (df["old_dist_buy"]/cross < df["old_si_buy"] ): return df["old_dist_buy"]/cross
     #elif: (df["old_si_buy"] == ""): return 
     return df["old_si_buy"]
 
@@ -95,7 +96,7 @@ def buy_01(Series):
     return Series
     
 def new_lmsrp(df):
-    dist_eur = df["old_dist_buy"]/Conf["cross"]
+    dist_eur = df["old_dist_buy"]/cross
     if ( dist_eur < df["old_si_buy"] ): min = dist_eur
     else: min = df["old_si_buy"]
     if (df["New disc"] == category_conf["special_catalog"]): return min / (1 - category_conf["max_disc_sip"])
@@ -149,7 +150,7 @@ for Company in Partners:
     if ("USD" not in Company):
         part[Company] = part["new LMSRP"] * Disc.apply(minus)
     else:
-        part[Company] = part["new LMSRP"] * Disc.apply(minus) * Conf["cross"]
+        part[Company] = part["new LMSRP"] * Disc.apply(minus) * cross
     part[Company] = part[Company].apply(f)
 
 
@@ -183,8 +184,12 @@ part.reset_index(inplace = True)
 #a = part.set_index("Product Group")
 a = part.set_index("partnum")
 a.sort_index(inplace=True)
-a.to_excel("./groups7.xls", index=True)
+#a.to_excel("./groups7.xls", index=True)
 
+lmsrp_ru = part[["partnum", "partlabel", "partmsrp", "partrefp", "partxferbasep","Product Group"]]
+lmsrp_ru["lmsrp_ru"] = part["new LMSRP"]
+lmsrp_ru.reset_index(inplace = True)
+lmsrp_ru.to_excel("./msrp_ru.xls", index=False)
 
 # Unique product groups
 b.set_index("Product Group", inplace = True)
