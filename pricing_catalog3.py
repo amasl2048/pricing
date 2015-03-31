@@ -25,10 +25,10 @@ dist = pd.ExcelFile(category_conf["dist_file"]).parse(category_conf["export"], i
 
 si = pd.ExcelFile(category_conf["si_file"]).parse(category_conf["export"], index_col = "Part Number")
 
-groups = pd.ExcelFile(category_conf["group_file"]).parse(category_conf["group_sheet"])
+#groups = pd.ExcelFile(category_conf["group_file"]).parse(category_conf["group_sheet"])
 
-c = groups[["Product Group", "Material Category Name", "Disc. group"]]
-c = c.drop_duplicates()
+#c = groups[["Product Group", "Material Category Name", "Disc. group"]]
+#c = c.drop_duplicates()
 #c.to_excel("./groups_unique3.xls", index=False)
 
 def mba(Series):
@@ -46,7 +46,7 @@ d = d.set_index("Product Group")
 d = d["Disc. group"]
 '''
 # Read prepared product groups discounts
-d = pd.ExcelFile("./base/groups_unique4.xls").parse("Sheet1")
+d = pd.ExcelFile(category_conf["prod_groups"]).parse("Sheet1")
 d = d.set_index("Product Group")
 d = d["Disc. group"]
 
@@ -187,6 +187,7 @@ a.sort_index(inplace=True)
 #a.to_excel("./groups7.xls", index=True)
 
 lmsrp_ru = part[["partnum", "partlabel", "partmsrp", "partrefp", "partxferbasep","Product Group"]]
+lmsrp_ru = lmsrp_ru.rename(columns={"Product Group": "partdisc"})
 lmsrp_ru["lmsrp_ru"] = part["new LMSRP"]
 lmsrp_ru.reset_index(inplace = True)
 lmsrp_ru.to_excel("./msrp_ru.xls", index=False)

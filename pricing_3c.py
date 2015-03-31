@@ -2,6 +2,7 @@
 # -*- coding: utf-8 -*-
 '''
 Расчёт скидок и генерация файлов buy*.xls и jde*.xls
+на основе Product groups
 2015 March
 '''
 import sys
@@ -10,26 +11,31 @@ from pandas import read_csv, ExcelFile
 
 print "Starting..."
 
-Conf = yaml.load(open("base/pricing_conf2.yml"))
+config_file = "base/pricing_conf2.yml"
+try:
+    Conf = yaml.load(open(config_file))
+except: 
+    print "Error: no %s file" % conf_file
+    sys.exit(0)
 cross = Conf["cross"]    # ex-rate eur/usd
 kz = Conf["kz"]
 
 #msrp = read_csv("msrp_dot.csv", ";", header=0, index_col=False)
-msrp = ExcelFile("./msrp_ru.xls").parse("Sheet1")
+msrp = ExcelFile(Conf["msrp_ru"]).parse(Conf["sheet"])
 
-Par = yaml.load(open("base/partners4.yml"))
+Par = yaml.load(open(Conf["partners"]))
 Partners = Par.keys()
 
 f = lambda x: round(x, 2)
 
 # Read prepared product groups discounts
-d = ExcelFile("./base/groups_unique4.xls").parse("Sheet1")
+d = ExcelFile(Conf["prod_groups"]).parse(Conf["prod_sheet"])
 d = d.set_index("Product Group")
 d = d["Disc. group"]
 
 msrp = msrp.rename(columns={"partnum": "Part Number",
                             "partlabel":"Designation EN", 
-                            #"partdisc": "Product Group",
+                            "partdisc": "Product Group",
                             "lmsrp_ru": "Price [EUR]"})
 
 lmsrp_ru = msrp[["Part Number", "Designation EN", "Product Group"]]
@@ -54,7 +60,11 @@ def disc_calc(df):
     '''
     New disc calc from Product Groups
     '''
-    new_grp = d.loc[df["Product Group"]]
+    try:
+        new_grp = d.loc[df["Product Group"]]
+    except:
+        print "Error: no '%s' product group" % df["Product Group"]
+        sys.exit(0)
     return Par[Company]["discount"][new_grp]
 
 buy = lmsrp_ru[["Part Number", "Designation EN"]]
