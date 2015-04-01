@@ -90,19 +90,10 @@ def k_ref(df):
         return k
     elif (df["partrefp"] == 0):
         return 0
-
-def buy_01(Series):
-    if (Series == 0): return 0.01
-    return Series
-    
-def new_lmsrp(df):
-    dist_eur = df["old_dist_buy"]/cross
-    if ( dist_eur < df["old_si_buy"] ): min = dist_eur
-    else: min = df["old_si_buy"]
-    if (df["New disc"] == category_conf["special_catalog"]): return min / (1 - category_conf["max_disc_sip"])
-    else: return min / (1 - category_conf["max_disc"])
+    return -1
 
 def k_new(df):
+    if (df["k"] == -1): return -1
     if (df["Material Category Name"] == category_conf["category_1"]):
         if ( df["k"] > 2 ): return 2
         elif ( df["k"] == 0): return 0
@@ -121,11 +112,23 @@ def k_new(df):
             return df["k"]
     return df["k"]
 
+def buy_01(df):
+    if (df["buy_new"] == 0): return 0.01
+    if (df["k"] == -1): return df["min_buy_eur"]
+    #if (df["partrefp"] == ""): return df["min_buy_eur"]
+    return df["buy_new"]
+        
+def new_lmsrp(df):
+    if (df["New disc"] == category_conf["special_catalog"]): 
+        return df["buy_new"] / (1 - category_conf["max_disc_sip"])
+    else: 
+        return df["buy_new"] / (1 - category_conf["max_disc"])
+
 part["min_buy_eur"] = part.apply(min_price, axis = 1)#.apply(f)
 part["k"] = part.apply(k_ref, axis = 1).apply(f)
 part["k_new"] = part.apply(k_new, axis = 1).apply(f)
 part["buy_new"] = part["partrefp"] * part["k_new"]
-part["buy_new"] = part["buy_new"].apply(buy_01)
+part["buy_new"] = part.apply(buy_01, axis = 1)
 part["new LMSRP"] = part.apply(new_lmsrp, axis = 1).apply(f)
 part["diff LMSRP"] = part["new LMSRP"] - part["LMSRP"]
 
@@ -184,7 +187,7 @@ part.reset_index(inplace = True)
 #a = part.set_index("Product Group")
 a = part.set_index("partnum")
 a.sort_index(inplace=True)
-#a.to_excel("./groups7.xls", index=True)
+a.to_excel("./buy_new.xls", index=True)
 
 lmsrp_ru = part[["partnum", "partlabel", "partmsrp", "partrefp", "partxferbasep","Product Group"]]
 lmsrp_ru = lmsrp_ru.rename(columns={"Product Group": "partdisc"})
