@@ -50,12 +50,6 @@ lmsrp_kz["Price [EUR]"] = price_kz.map(f)
 lmsrp_kz.to_excel("LMSRP_KZ.xls", index=False)
 #print lmsrp_kz
 
-def minus(Series):
-    """
-    buy price part = 1 - discount
-    """
-    if (Series != "NA"): return 1 - Series
-
 def disc_calc(df):
     '''
     New disc calc from Product Groups
@@ -67,7 +61,22 @@ def disc_calc(df):
         sys.exit(0)
     return Par[Company]["discount"][new_grp]
 
-buy = lmsrp_ru[["Part Number", "Designation EN"]]
+def minus(Series):
+    """
+    buy price part = 1 - discount
+    """
+    if (Series != "NA"): return 1 - Series
+    
+def check_buy(df):
+    if ("USD" not in Company):
+        if (df[Company] < df["Ref."]): print Company, df["Part Number"], "\t", df["Designation EN"], df["Ref."], df[Company]
+    else:
+        if (df[Company]/cross < df["Ref."]): print Company, df["Part Number"], "\t", df["Designation EN"], df["Ref."], df[Company]
+        
+buy = lmsrp_ru[["Part Number", "Designation EN"]] # summary table for approval
+buy.loc[:, "MSRP"] = msrp["partmsrp"]
+buy.loc[:, "Ref."] = msrp["partrefp"]
+buy.loc[:, "Trans."] = msrp["partxferbasep"]
 for Company in Partners:
     print Company
     Pcode = Par[Company]["p_code"]
@@ -98,13 +107,9 @@ for Company in Partners:
     jde2.to_excel(fname2, index=False)
     
     buy.loc[:, Company] = a[col4]
-
+    buy.apply(check_buy, axis = 1) 
+    
 buy.loc[:, "LMSRP_RU"] = lmsrp_ru["Price [EUR]"]
-buy.loc[:, "MSRP"] = msrp["partmsrp"]
-buy.loc[:, "Ref."] = msrp["partrefp"]
-buy.loc[:, "Trans."] = msrp["partxferbasep"]
-
-# summary table for approval
 #print buy
 buy.to_excel("./Buy_prices.xls", index=False)
 
