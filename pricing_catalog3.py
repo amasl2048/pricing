@@ -95,7 +95,7 @@ def k_ref(df):
 def k_new(df):
     if (df["k"] == -1): return -1
     if (df["Material Category Name"] == category_conf["category_1"]):
-        if ( df["k"] > 2 ): return 2
+        if ( df["k"] > category_conf["max_cat1"] ): return category_conf["max_cat1"]
         elif ( df["k"] == 0): return 0
         elif ( df["k"] < 1.1): return 1.1
         return df["k"]
@@ -106,14 +106,15 @@ def k_new(df):
             elif ( df["k"] < 1.1): return 1.1
             return df["k"]
         else:
-            if ( df["k"] > 1.24 ): return 1.24
+            if ( df["k"] > category_conf["max_cat2"] ): return category_conf["max_cat2"]
             elif ( df["k"] == 0): return 0
             elif ( df["k"] < 1.1): return 1.1
             return df["k"]
     return df["k"]
 
 def buy_01(df):
-    if (df["buy_new"] == 0): return 0.01
+    if ( (df["buy_new"] == 0) and (df["partmsrp"] == 0) ): return 0.01
+    if ( (df["buy_new"] == 0) and  not (df["partmsrp"] == 0) ): return df["min_buy_eur"]
     if (df["k"] == -1): return df["min_buy_eur"]
     #if (df["partrefp"] == ""): return df["min_buy_eur"]
     return df["buy_new"]
