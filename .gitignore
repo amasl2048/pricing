@@ -1,0 +1,9 @@
+*~
+*.yml
+*.log
+*.xls?
+*.txt
+*.csv
+*.bat
+*.awk
+*.ods

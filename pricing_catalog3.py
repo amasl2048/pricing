@@ -93,23 +93,26 @@ def k_ref(df):
     return -1
 
 def k_new(df):
+    k_min = category_conf["k_min"]
     if (df["k"] == -1): return -1
+    #if (df["New disc"] == "Service"): return 1
     if (df["Material Category Name"] == category_conf["category_1"]):
         if ( df["k"] > category_conf["max_cat1"] ): return category_conf["max_cat1"]
         elif ( df["k"] == 0): return 0
-        elif ( df["k"] < 1.1): return 1.1
+        elif ( df["k"] < k_min): return k_min
         return df["k"]
     if ( category_conf["category_2"] in df["Material Category Name"]):
         if (df["New disc"] == category_conf["product_1"]):
-            if ( df["k"] > 1.1 ): return 1.1
+            if ( df["k"] > k_min ): return k_min
             elif ( df["k"] == 0): return 0
-            elif ( df["k"] < 1.1): return 1.1
+            elif ( df["k"] < k_min): return k_min
             return df["k"]
         else:
             if ( df["k"] > category_conf["max_cat2"] ): return category_conf["max_cat2"]
             elif ( df["k"] == 0): return 0
-            elif ( df["k"] < 1.1): return 1.1
+            elif ( df["k"] < k_min): return k_min
             return df["k"]
+    if ( df["k"] > 1 and df["k"] < k_min): return k_min
     return df["k"]
 
 def buy_01(df):
@@ -188,7 +191,10 @@ part.reset_index(inplace = True)
 #a = part.set_index("Product Group")
 a = part.set_index("partnum")
 a.sort_index(inplace=True)
-a.to_excel("./buy_new.xls", index=True)
+try: 
+    a.to_excel("./buy_new.xls", index=True)
+except:
+    print "\nError: 'buy_new.xls' is busy..."
 
 lmsrp_ru = part[["partnum", "partlabel", "partmsrp", "partrefp", "partxferbasep","Product Group"]]
 lmsrp_ru = lmsrp_ru.rename(columns={"Product Group": "partdisc"})

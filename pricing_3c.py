@@ -10,6 +10,8 @@ import yaml
 from pandas import read_csv, ExcelFile
 
 print "Starting..."
+log_file = open("pricing.log", "w")
+log = []
 
 config_file = "base/pricing_conf2.yml"
 try:
@@ -39,7 +41,7 @@ msrp = msrp.rename(columns={"partnum": "Part Number",
                             "lmsrp_ru": "Price [EUR]"})
 
 lmsrp_ru = msrp[["Part Number", "Designation EN", "Product Group"]]
-price = msrp["Price [EUR]"] # LMSRP_RU
+price = msrp["Price [EUR]"] # LMSRP_RU - not round 
 lmsrp_ru["Price [EUR]"] = price.map(f) # round to 2 digits
 lmsrp_ru.to_excel("LMSRP_RU.xls", index=False)
 #print lmsrp_ru
@@ -57,7 +59,7 @@ def disc_calc(df):
     try:
         new_grp = d.loc[df["Product Group"]]
     except:
-        print "Error: no '%s' product group" % df["Product Group"]
+        print "\n!!!Error: no '%s' product group" % df["Product Group"]
         sys.exit(0)
     return Par[Company]["discount"][new_grp]
 
@@ -68,10 +70,16 @@ def minus(Series):
     if (Series != "NA"): return 1 - Series
     
 def check_buy(df):
+    global log
+    report = []
     if ("USD" not in Company):
-        if (df[Company] < df["Ref."]): print Company, df["Part Number"], "\t", df["Designation EN"], df["Ref."], df[Company]
+        if (df[Company] < df["Ref."]):
+            report = [Company, df["Part Number"], df["Designation EN"], str(df["Ref."]), str(df[Company])]
+            log.append(" ".join(report))
     else:
-        if (df[Company]/cross < df["Ref."]): print Company, df["Part Number"], "\t", df["Designation EN"], df["Ref."], df[Company]
+        if (df[Company]/cross < df["Ref."]): 
+            report = [Company, df["Part Number"], df["Designation EN"], str(df["Ref."]), str(df[Company])]
+            log.append(" ".join(report))
         
 buy = lmsrp_ru[["Part Number", "Designation EN"]] # summary table for approval
 buy.loc[:, "MSRP"] = msrp["partmsrp"]
@@ -89,7 +97,7 @@ for Company in Partners:
         col4 = "Price [USD]"
     a = lmsrp_ru[["Part Number", "Designation EN", "Product Group"]]
     jde = lmsrp_ru[["Part Number", "Designation EN"]]
-    rus = price * Disc
+    rus = price * Disc # multiply before round 
     rus = rus.map(f) # round to 2 digits
     a.loc[:, col4] = rus
     jde.loc[:, col4] = rus
@@ -107,11 +115,19 @@ for Company in Partners:
     jde2.to_excel(fname2, index=False)
     
     buy.loc[:, Company] = a[col4]
-    buy.apply(check_buy, axis = 1) 
+    buy.apply(check_buy, axis = 1) # - check after round to 2 digits
     
 buy.loc[:, "LMSRP_RU"] = lmsrp_ru["Price [EUR]"]
 #print buy
-buy.to_excel("./Buy_prices.xls", index=False)
+try:
+    buy.to_excel("./Buy_prices.xls", index=False)
+except:
+    print "\n!!!Error: 'Buy_prices.xls' is busy!"
 
-print "Ex-rate EUR/USD:", cross
+log_file.write(str(log))
+log_file.close()
+if log:
+    print "\nCheck buy price: \n", str(log)
+
+print "\nEx-rate EUR/USD:", cross
 raw_input()
