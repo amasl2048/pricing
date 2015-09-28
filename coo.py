@@ -34,15 +34,15 @@ for row in reader:
         findit = False
         for col in row:
             if (colnum == 0): # ищем в первой колонке нужный part.num.
-				if (n == 1):
-					partnum = a.item()
-					if (col == partnum.strip()): 
-						writer.writerow(row)
-				else:
-					for partnum in a: 
-						if (col == partnum.strip()): 
-							writer.writerow(row)
-							#findit = True
+                if (n == 1):
+                    partnum = a.item()
+                    if (col == partnum.strip()): 
+                        writer.writerow(row)
+                else:
+                    for partnum in a: 
+                        if (col == partnum.strip()): 
+                            writer.writerow(row)
+                            #findit = True
             colnum += 1
     rownum += 1
 
