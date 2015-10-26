@@ -82,7 +82,7 @@ def check_buy(df):
             log.append(" ".join(report))
 
 
-buy = lmsrp["Russia"][["Part Number", "Designation EN"]] # summary table for approval
+buy = lmsrp["RU"][["Part Number", "Designation EN"]] # summary table for approval
 buy.loc[:, "MSRP"] = msrp["partmsrp"]
 buy.loc[:, "Ref."] = msrp["partrefp"]
 buy.loc[:, "Trans."] = msrp["partxferbasep"]
@@ -97,9 +97,9 @@ for Company in Partners:
     else:
         Disc = Disc * cross
         col4 = "Price [USD]"
-    a = lmsrp["Russia"][["Part Number", "Designation EN", "Product Group"]]
-    jde = lmsrp["Russia"][["Part Number", "Designation EN"]]
-    rus = prices["Russia"] * Disc # multiply before round 
+    a = lmsrp["RU"][["Part Number", "Designation EN", "Product Group"]]
+    jde = lmsrp["RU"][["Part Number", "Designation EN"]]
+    rus = prices["RU"] * Disc # multiply before round 
     rus = rus.map(f) # round to 2 digits
     a.loc[:, col4] = rus
     jde.loc[:, col4] = rus
@@ -107,7 +107,9 @@ for Company in Partners:
     jde = jde.reindex(columns = ["JDE", "Part Number", "Designation EN", col4])
     
     # save buy price xls
-    fname = str(Par[Company]["country"]) + "_" + cur + "_" + str(Company) + "_" + str(Pcode) + "_" + time.strftime("%Y%m%d") + ".xls"
+    fname = str(Par[Company]["country"]) + "_" + cur + "_" + str(Company)+\
+    "(" + str(Par[Company]["internal"]) + ")" + "_" +\
+    str(Pcode) + "_" + time.strftime("%Y%m%d") + ".xls"
     b_price = a[ a[col4] >= 0 ] # delete empty price items
     b_price.to_excel(fname, index=False)
     
@@ -120,7 +122,7 @@ for Company in Partners:
     buy.apply(check_buy, axis = 1) # - check after round to 2 digits
     
     # calc difference with previous buy price
-    last_file = Conf["price_dir"] + str(Par[Company]["country"]) + "_" + cur + "_" + str(Company) + "_" + str(Pcode) + "_" + Conf["last_date"] + ".xls"
+    last_file = Conf["price_dir"] + str(Company) + ".xls"
     last_price = ExcelFile(last_file).parse(Conf["price_sheet"])
     last_price.set_index("Part Number", inplace = True)
     diff_price = buy[["Part Number", "Designation EN", str(Company)]]
@@ -133,16 +135,16 @@ for Company in Partners:
     diff_price.reset_index(inplace = True)
     diff_price.to_excel(diff_file, index=False)
     
-buy.loc[:, "LMSRP_RU"] = lmsrp["Russia"]["Price [EUR]"]
+buy.loc[:, "LMSRP_RU"] = lmsrp["RU"]["Price [EUR]"]
 #print buy
 try:
-    buy.to_excel("./Russia_EUR_USD_" + time.strftime("%Y%m%d") + ".xls", index=False)
+    buy.to_excel("./RU_EUR_USD_" + time.strftime("%Y%m%d") + ".xls", index=False)
 except:
     print "\n!!!Error: '.xls' is busy!"
 
 # LMSRP difference
 for count in countries:
-    lmsrp_file = Conf["price_dir"] + count + "_EUR_LMSRP_" + Conf["last_date"] + ".xls"
+    lmsrp_file = Conf["price_dir"] + count + "_LMSRP" + ".xls"
     last_lmsrp = ExcelFile(lmsrp_file).parse(Conf["price_sheet"])
     last_lmsrp.set_index("Part Number", inplace = True)
     diff_lmsrp = lmsrp[count][["Part Number", "Designation EN", "Price [EUR]"]]
