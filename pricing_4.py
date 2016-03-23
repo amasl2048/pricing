@@ -7,14 +7,15 @@
 '''
 import sys
 import yaml
-from pandas import read_csv, ExcelFile
+from pandas import read_csv, ExcelFile, ExcelWriter
 import time
 
 print "Starting..."
 log_file = open("pricing.log", "w")
 log = []
 
-config_file = "base/pricing_conf2.yml"
+config_file = "./base/pricing_conf2.yml"
+print "\nConfig file: ", config_file
 try:
     Conf = yaml.load(open(config_file))
 except: 
@@ -26,12 +27,14 @@ cross = Conf["cross"]    # ex-rate eur/usd
 msrp = ExcelFile(Conf["msrp_ru"]).parse(Conf["sheet"])
 
 Par = yaml.load(open(Conf["partners"]))
+print "Parthner's file: ", Conf["partners"]
 Partners = Par.keys()
 
 f = lambda x: round(x, 2)
 
 # Read prepared product groups discounts
 d = ExcelFile(Conf["prod_groups"]).parse(Conf["prod_sheet"])
+print "Product's groups: ", Conf["prod_groups"], "\n"
 d = d.set_index("Product Group")
 d = d["Disc. group"]
 
@@ -70,9 +73,10 @@ def minus(Series):
     if (Series != "NA"): return 1 - Series
     
 def check_buy(df):
+    '''If the price below Ref.?'''
     global log
     report = []
-    if ("USD" not in Company):
+    if (Par[Company]["cur"] == "EUR"): 
         if (df[Company] < df["Ref."]):
             report = [Company, df["Part Number"], df["Designation EN"], str(df["Ref."]), str(df[Company])]
             log.append(" ".join(report))
@@ -136,9 +140,25 @@ for Company in Partners:
     diff_price.to_excel(diff_file, index=False)
     
 buy.loc[:, "LMSRP_RU"] = lmsrp["RU"]["Price [EUR]"]
+
 #print buy
+writer = ExcelWriter("./Prices_EUR_USD_" + time.strftime("%Y%m%d") + ".xls")
+buy.to_excel(writer, "Prices", index=False)
+buy_disc = lmsrp["RU"][["Part Number", "Designation EN"]] # check discounts
+buy_koef = lmsrp["RU"][["Part Number", "Designation EN"]] # check k
+for Company in Partners:
+    cur  = Par[Company]["cur"]
+    if (cur == "EUR"):
+        buy_disc[Company] = (1 - buy[Company] / buy["LMSRP_RU"]).map(f) # round to 2 digits
+        buy_koef[Company] =  (buy[Company] / buy["Ref."]).map(f) 
+    else:
+        buy_disc[Company] = (1 - buy[Company] / buy["LMSRP_RU"] / cross).map(f) # round to 2 digits 
+        buy_koef[Company] =  (buy[Company] / cross / buy["Ref."]).map(f) 
+
+buy_disc.to_excel(writer, "Discounts", index=False)
+buy_koef.to_excel(writer, "Coefficients", index=False)
 try:
-    buy.to_excel("./RU_EUR_USD_" + time.strftime("%Y%m%d") + ".xls", index=False)
+    writer.save()
 except:
     print "\n!!!Error: '.xls' is busy!"
 
