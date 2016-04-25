@@ -1,9 +1,11 @@
 *~
 *.yml
 *.log
-*.xls?
+*.xls
+*.xlsx
 *.txt
 *.csv
 *.bat
 *.awk
 *.ods
+*.zip
