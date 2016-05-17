@@ -55,8 +55,8 @@ buy.rename(columns={"partmsrp": "MSRP",
                     "partxferbasep": "Trans."}, inplace=True)
 buy.set_index("partnum", inplace=True)
 
-buy.loc[:,"Product Group"] = lmsrp["RU"]["Product Group"]
-buy.loc[:,"Material Category Name"] = lmsrp["RU"]["MCN"]
+buy.loc[:,"Product Group"] = lmsrp["Russia"]["Product Group"]
+buy.loc[:,"Material Category Name"] = lmsrp["Russia"]["MCN"]
 
 def new_disc(Series):
     '''
@@ -111,7 +111,9 @@ for Company in Partners:
     buy.loc[:, Company] = par_price[col4]
     buy.apply(check_buy, axis = 1) # - check after round to 2 digits
 
-buy.loc[:, "LMSRP_RU"] = lmsrp["RU"]["Price [EUR]"]
+buy.loc[:, "LMSRP_RU"] = lmsrp["Russia"]["Price [EUR]"]
+buy.loc[:, "LMSRP_KZ"] = lmsrp["Kazakhstan"]["Price [EUR]"]
+buy.loc[:, "LMSRP_UA"] = lmsrp["Ukraine"]["Price [EUR]"]
 
 # check dics & coef.
 buy_disc = msrp[["partnum", "partlabel"]] # check discounts
@@ -127,16 +129,17 @@ buy_koef.loc[:,"Material Category Name"] = buy["Material Category Name"]
 for Company in Partners:
     log.append(" ".join(Company))
     cur  = Par[Company]["cur"]
+    country = Par[Company]["country"]
     if (cur == "EUR"):
-        buy_disc[Company] = (100 - buy[Company] / buy["LMSRP_RU"]*100).map(f) # round to 2 digits
+        buy_disc[Company] = (100 - buy[Company] / lmsrp[country]["Price [EUR]"] *100).map(f) # round to 2 digits
         buy_koef[Company] =  (buy[Company] / buy["Ref."]).map(f) 
     else:
-        buy_disc[Company] = (100 - buy[Company] / buy["LMSRP_RU"]*100 / cross).map(f) # round to 2 digits
+        buy_disc[Company] = (100 - buy[Company] / lmsrp[country]["Price [EUR]"] *100 / cross).map(f) # round to 2 digits
         buy_koef[Company] =  (buy[Company] / cross / buy["Ref."]).map(f) 
     buy_disc.apply(check_disc, axis = 1)
 
 #print buy
-writer = ExcelWriter("./Prices_EUR_USD_" + time.strftime("%Y%m%d") + ".xls")
+writer = ExcelWriter("./ckeck_prices_EUR_USD_" + time.strftime("%Y%m%d") + ".xls")
 buy.reset_index(inplace=True)
 buy.to_excel(writer, "Prices", index=False)
 buy_disc.reset_index(inplace=True)
@@ -152,7 +155,7 @@ except:
 if log:
     print "\nCheck buy price: \n"
     for item in log:
-        print str(item)
+        print unicode(item)
         log_file.writelines(str(item))
         log_file.write("\n")
 log_file.close()

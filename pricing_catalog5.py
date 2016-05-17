@@ -7,7 +7,13 @@ import sys
 Combine Product Group, Material Category Name and Disc.
 Check koef. k and calc new k_new & buy_p
 
-2015 July
+Create files:
+	buy_new3.xls
+	lmsrp_ru3.xls
+	partners_discounts.xls
+	partners_discounts_uniq.xls
+
+2016 May
 '''
 print "Starting..."
 
@@ -16,7 +22,7 @@ category_conf = yaml.load(open("./base/category_conf.yml"))
 cross = category_conf["cross"]
 
 # load partners data
-Par = yaml.load(open("./base/partners5.yml"))
+Par = yaml.load(open(category_conf["partner_disc"]))
 Partners = Par.keys()
 
 # load prices
@@ -182,16 +188,16 @@ part.reset_index(inplace = True)
 a = part.set_index("partnum")
 a.sort_index(inplace=True)
 try: 
-    a.to_excel("./buy_new.xls", index=True)
+    a.to_excel("./buy_new3.xls", index=True)
 except:
-    print "\nError: 'buy_new.xls' is busy..."
+    print "\nError: 'buy_new3.xls' is busy..."
 
 # New lmsrp_ru
 lmsrp_ru = part[["partnum", "partlabel", "partmsrp", "partrefp", "partxferbasep", "Product Group"]]
 lmsrp_ru = lmsrp_ru.rename(columns={"Product Group": "partdisc"})
 lmsrp_ru["lmsrp_ru"] = part["new LMSRP"]
 lmsrp_ru.reset_index(inplace = True)
-lmsrp_ru.to_excel("./lmsrp_ru.xls", index=False)
+lmsrp_ru.to_excel("./lmsrp_ru3.xls", index=False)
 
 # Unique product groups
 b.set_index("Product Group", inplace = True)

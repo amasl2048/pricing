@@ -2,12 +2,12 @@
 # -*- coding: utf-8 -*-
 '''
 Расчёт скидок и генерация файлов buy*.xls и jde*.xls
-на основе Product groups
-2015 Sept
+на основе Product groups и "lmsrp_ru" column
+2016 May
 '''
 import sys
 import yaml
-from pandas import read_csv, ExcelFile, ExcelWriter
+from pandas import ExcelFile, ExcelWriter
 import time
 
 print "Starting..."
@@ -19,11 +19,10 @@ print "\nConfig file: ", config_file
 try:
     Conf = yaml.load(open(config_file))
 except: 
-    print "Error: no %s file" % conf_file
+    print "Error: no %s file" % config_file
     sys.exit(0)
-cross = Conf["cross"]    # ex-rate eur/usd
+cross = Conf["cross"]   # ex-rate eur/usd
 
-#msrp = read_csv("msrp_dot.csv", ";", header=0, index_col=False)
 msrp = ExcelFile(Conf["msrp_ru"]).parse(Conf["sheet"])
 
 Par = yaml.load(open(Conf["partners"]))
@@ -50,10 +49,9 @@ lmsrp = {}
 prices = {}
 for count in countries:
     lmsrp[count] = msrp[["Part Number", "Designation EN", "Product Group", ]]
-    prices[count] = msrp["Price [EUR]"] * Conf["countries"][count]
+    prices[count] = msrp["Price [EUR]"] * Conf["countries"][count] # before round
     lmsrp[count]["Price [EUR]"] = prices[count].map(f) # round to 2 digits
     lmsrp[count].to_excel(count + "_EUR_LMSRP_" + time.strftime("%Y%m%d") + ".xls", index=False)
-    #import ipdb;ipdb.set_trace()
 
 def disc_calc(df):
     '''
@@ -86,7 +84,7 @@ def check_buy(df):
             log.append(" ".join(report))
 
 
-buy = lmsrp["RU"][["Part Number", "Designation EN"]] # summary table for approval
+buy = lmsrp["Russia"][["Part Number", "Designation EN"]] # summary table for approval
 buy.loc[:, "MSRP"] = msrp["partmsrp"]
 buy.loc[:, "Ref."] = msrp["partrefp"]
 buy.loc[:, "Trans."] = msrp["partxferbasep"]
@@ -96,17 +94,18 @@ for Company in Partners:
     Disc = msrp.apply(disc_calc, axis = 1)
     Disc = Disc.apply(minus)
     cur  = Par[Company]["cur"]
+    country = Par[Company]["country"]
     if (cur == "EUR"):
         col4 = "Price [EUR]"
     else:
         Disc = Disc * cross
         col4 = "Price [USD]"
-    a = lmsrp["RU"][["Part Number", "Designation EN", "Product Group"]]
-    jde = lmsrp["RU"][["Part Number", "Designation EN"]]
-    rus = prices["RU"] * Disc # multiply before round 
-    rus = rus.map(f) # round to 2 digits
-    a.loc[:, col4] = rus
-    jde.loc[:, col4] = rus
+    a = lmsrp["Russia"][["Part Number", "Designation EN", "Product Group"]]
+    jde = lmsrp["Russia"][["Part Number", "Designation EN"]]
+    pr = prices[country] * Disc # multiply before round -> price depends on country
+    pr = pr.map(f) # round to 2 digits
+    a.loc[:, col4] = pr
+    jde.loc[:, col4] = pr
     jde.loc[:, "JDE"] = Pcode
     jde = jde.reindex(columns = ["JDE", "Part Number", "Designation EN", col4])
     
@@ -138,21 +137,25 @@ for Company in Partners:
     diff_file = "./diff_" + str(Company) + "_" + cur + "_" + time.strftime("%Y%m%d") + ".xls"
     diff_price.reset_index(inplace = True)
     diff_price.to_excel(diff_file, index=False)
-    
-buy.loc[:, "LMSRP_RU"] = lmsrp["RU"]["Price [EUR]"]
+
+
+buy.loc[:, "LMSRP_RU"] = lmsrp["Russia"]["Price [EUR]"]
+buy.loc[:, "LMSRP_KZ"] = lmsrp["Kazakhstan"]["Price [EUR]"]
+buy.loc[:, "LMSRP_UA"] = lmsrp["Ukraine"]["Price [EUR]"]
 
 #print buy
 writer = ExcelWriter("./Prices_EUR_USD_" + time.strftime("%Y%m%d") + ".xls")
 buy.to_excel(writer, "Prices", index=False)
-buy_disc = lmsrp["RU"][["Part Number", "Designation EN"]] # check discounts
-buy_koef = lmsrp["RU"][["Part Number", "Designation EN"]] # check k
+buy_disc = lmsrp["Russia"][["Part Number", "Designation EN", "Product Group"]] # check discounts
+buy_koef = lmsrp["Russia"][["Part Number", "Designation EN", "Product Group"]] # check k
 for Company in Partners:
     cur  = Par[Company]["cur"]
+    country = Par[Company]["country"]
     if (cur == "EUR"):
-        buy_disc[Company] = (1 - buy[Company] / buy["LMSRP_RU"]).map(f) # round to 2 digits
+        buy_disc[Company] = (1 - buy[Company] / prices[country]).map(f) #   depends on country 
         buy_koef[Company] =  (buy[Company] / buy["Ref."]).map(f) 
     else:
-        buy_disc[Company] = (1 - buy[Company] / buy["LMSRP_RU"] / cross).map(f) # round to 2 digits 
+        buy_disc[Company] = (1 - buy[Company] / prices[country] / cross).map(f) # depends on country
         buy_koef[Company] =  (buy[Company] / cross / buy["Ref."]).map(f) 
 
 buy_disc.to_excel(writer, "Discounts", index=False)
