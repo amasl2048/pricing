@@ -23,6 +23,10 @@ except:
 cross = Conf["cross"]   # ex-rate eur/usd
 
 msrp = ExcelFile(Conf["msrp_ru"]).parse(Conf["sheet"])
+def change_u(Series):
+    ''' Elsewhere some items from MS Excel are int or str '''
+    return unicode(Series)
+msrp["partnum"] = msrp["partnum"].apply(change_u)
 
 Par = yaml.load(open(Conf["partners"]))
 print "Parthner's file: ", Conf["partners"]
@@ -49,10 +53,12 @@ for count in countries:
     lmsrp[count].loc[:,"Price [EUR]"] = lmsrp_price["Price [EUR]"]
     #lmsrp[count].to_excel(count + "_EUR_LMSRP_" + time.strftime("%Y%m%d") + ".xls", index=True)
 
-buy = msrp[["partnum", "partlabel", "partmsrp", "partrefp", "partxferbasep"]] # summary table for approval
+buy = msrp[["partnum", "partlabel", "partmsrp", "partrefp", "partxferbasep", "partdisc"]] # summary table for approval
 buy.rename(columns={"partmsrp": "MSRP",
                     "partrefp": "Ref.",
-                    "partxferbasep": "Trans."}, inplace=True)
+                    "partxferbasep": "Trans."
+                    }, inplace=True)
+                   
 buy.set_index("partnum", inplace=True)
 
 buy.loc[:,"Product Group"] = lmsrp["Russia"]["Product Group"]
