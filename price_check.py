@@ -2,12 +2,13 @@
 # -*- coding: utf-8 -*-
 '''
 Проверка коэф. и скидок партнерских прайс-листов 
-2016 Apr
+2016 May
 '''
 import sys
 import yaml
 from pandas import ExcelFile, ExcelWriter, isnull
 import time
+import pprint
 
 print "Starting..."
 log_file = open("pricing.log", "w")
@@ -20,6 +21,7 @@ try:
 except: 
     print "Error: no %s file" % config_file
     sys.exit(0)
+pprint.pprint(Conf)
 cross = Conf["cross"]   # ex-rate eur/usd
 
 msrp = ExcelFile(Conf["msrp_ru"]).parse(Conf["sheet"])
