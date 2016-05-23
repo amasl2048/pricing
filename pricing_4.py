@@ -7,8 +7,10 @@
 '''
 import sys
 import yaml
-from pandas import ExcelFile, ExcelWriter
+#from pandas import ExelFile, ExcelWriter
+import pandas as pd
 import time
+import pprint
 
 print "Starting..."
 log_file = open("pricing.log", "w")
@@ -21,27 +23,49 @@ try:
 except: 
     print "Error: no %s file" % config_file
     sys.exit(0)
+pprint.pprint(Conf)
 cross = Conf["cross"]   # ex-rate eur/usd
 
-msrp = ExcelFile(Conf["msrp_ru"]).parse(Conf["sheet"])
+if Conf["exported"] == True:
+    print "\nExported price list!\n"
+    msrp = pd.ExcelFile(Conf["exported_msrp_ru"]).parse(Conf["exported_sheet"])
+else:
+    msrp = pd.ExcelFile(Conf["msrp_ru"]).parse(Conf["sheet"])
+
+def change_u(Series):
+    return unicode(Series)
+msrp["partnum"] = msrp["partnum"].apply(change_u)
+
+def is_duplicate(Series):
+    pn = Series.values.tolist()
+    full_len = len(pn)
+    set_len = len( set(pn) )
+    if full_len != set_len:
+        print "msrp full len: %s, uniq len: %s, diff: %s" % (full_len, set_len, full_len - set_len)
+        # http://stackoverflow.com/questions/9835762/find-and-list-duplicates-in-python-list
+        import collections
+        print [item for item, count in collections.Counter(pn).items() if count > 1]
+        sys.exit(0)
+is_duplicate(msrp["partnum"])
 
 Par = yaml.load(open(Conf["partners"]))
-print "Parthner's file: ", Conf["partners"]
+#print "Parthner's file: ", Conf["partners"]
 Partners = Par.keys()
 
 f = lambda x: round(x, 2)
 
 # Read prepared product groups discounts
-d = ExcelFile(Conf["prod_groups"]).parse(Conf["prod_sheet"])
-print "Product's groups: ", Conf["prod_groups"], "\n"
+d = pd.ExcelFile(Conf["prod_groups"]).parse(Conf["prod_sheet"])
 d = d.set_index("Product Group")
 d = d["Disc. group"]
 
+if not "lmsrp_ru" in msrp.columns.values.tolist():
+    print "Error: no 'lmsrp_ru' column price"
+    sys.exit(0)
 msrp = msrp.rename(columns={"partnum": "Part Number",
                             "partlabel":"Designation EN", 
                             "partdisc": "Product Group",
                             "lmsrp_ru": "Price [EUR]"})
-
 
 # LMSRP
 countries = Conf["countries"]
@@ -52,6 +76,7 @@ for count in countries:
     prices[count] = msrp["Price [EUR]"] * Conf["countries"][count] # before round
     lmsrp[count]["Price [EUR]"] = prices[count].map(f) # round to 2 digits
     lmsrp[count].to_excel(count + "_EUR_LMSRP_" + time.strftime("%Y%m%d") + ".xls", index=False)
+lmsrp = pd.Panel(lmsrp)
 
 def disc_calc(df):
     '''
@@ -69,7 +94,7 @@ def minus(Series):
     buy price part = 1 - discount
     """
     if (Series != "NA"): return 1 - Series
-    
+
 def check_buy(df):
     '''If the price below Ref.?'''
     global log
@@ -88,8 +113,8 @@ buy = lmsrp["Russia"][["Part Number", "Designation EN"]] # summary table for app
 buy.loc[:, "MSRP"] = msrp["partmsrp"]
 buy.loc[:, "Ref."] = msrp["partrefp"]
 buy.loc[:, "Trans."] = msrp["partxferbasep"]
-for Company in Partners:
-    print Company
+
+def p_price(Company):
     Pcode = Par[Company]["p_code"]
     Disc = msrp.apply(disc_calc, axis = 1)
     Disc = Disc.apply(minus)
@@ -100,11 +125,11 @@ for Company in Partners:
     else:
         Disc = Disc * cross
         col4 = "Price [USD]"
-    a = lmsrp["Russia"][["Part Number", "Designation EN", "Product Group"]]
+    lmsrp_ru = lmsrp["Russia"][["Part Number", "Designation EN", "Product Group"]]
     jde = lmsrp["Russia"][["Part Number", "Designation EN"]]
     pr = prices[country] * Disc # multiply before round -> price depends on country
     pr = pr.map(f) # round to 2 digits
-    a.loc[:, col4] = pr
+    lmsrp_ru.loc[:, col4] = pr
     jde.loc[:, col4] = pr
     jde.loc[:, "JDE"] = Pcode
     jde = jde.reindex(columns = ["JDE", "Part Number", "Designation EN", col4])
@@ -113,7 +138,7 @@ for Company in Partners:
     fname = str(Par[Company]["country"]) + "_" + cur + "_" + str(Company)+\
     "(" + str(Par[Company]["internal"]) + ")" + "_" +\
     str(Pcode) + "_" + time.strftime("%Y%m%d") + ".xls"
-    b_price = a[ a[col4] >= 0 ] # delete empty price items
+    b_price = lmsrp_ru[ lmsrp_ru[col4] >= 0 ] # delete empty price items
     b_price.to_excel(fname, index=False)
     
     # save jde xls
@@ -121,30 +146,37 @@ for Company in Partners:
     jde2 = jde[ jde[col4] >= 0 ] # delete empty price items
     jde2.to_excel(fname2, index=False)
     
-    buy.loc[:, Company] = a[col4]
+    buy.loc[:, Company] = lmsrp_ru[col4]
     buy.apply(check_buy, axis = 1) # - check after round to 2 digits
     
     # calc difference with previous buy price
     last_file = Conf["price_dir"] + str(Company) + ".xls"
-    last_price = ExcelFile(last_file).parse(Conf["price_sheet"])
+    try:
+        last_price = pd.ExcelFile(last_file).parse(Conf["price_sheet"])
+    except: 
+        print "Error: %s price sheet name" % Conf["price_sheet"]
+        sys.exit(0)
     last_price.set_index("Part Number", inplace = True)
-    diff_price = buy[["Part Number", "Designation EN", str(Company)]]
+    diff_price = buy[["Part Number", "Designation EN", Company]]
     diff_price.set_index("Part Number", inplace = True)
     diff_price.loc[:, "last"] = last_price[col4]
     
-    a.set_index("Part Number", inplace = True)
-    diff_price.loc[:, "diff"] = a[col4] - last_price[col4]
+    lmsrp_ru.set_index("Part Number", inplace = True)
+    diff_price.loc[:, "diff"] = lmsrp_ru[col4] - last_price[col4]
     diff_file = "./diff_" + str(Company) + "_" + cur + "_" + time.strftime("%Y%m%d") + ".xls"
     diff_price.reset_index(inplace = True)
     diff_price.to_excel(diff_file, index=False)
 
-
+for Company in Partners:
+    print Company
+    p_price(Company)
+    
 buy.loc[:, "LMSRP_RU"] = lmsrp["Russia"]["Price [EUR]"]
 buy.loc[:, "LMSRP_KZ"] = lmsrp["Kazakhstan"]["Price [EUR]"]
 buy.loc[:, "LMSRP_UA"] = lmsrp["Ukraine"]["Price [EUR]"]
 
 #print buy
-writer = ExcelWriter("./Prices_EUR_USD_" + time.strftime("%Y%m%d") + ".xls")
+writer = pd.ExcelWriter("./Prices_EUR_USD_" + time.strftime("%Y%m%d") + ".xls")
 buy.to_excel(writer, "Prices", index=False)
 buy_disc = lmsrp["Russia"][["Part Number", "Designation EN", "Product Group"]] # check discounts
 buy_koef = lmsrp["Russia"][["Part Number", "Designation EN", "Product Group"]] # check k
@@ -168,7 +200,7 @@ except:
 # LMSRP difference
 for count in countries:
     lmsrp_file = Conf["price_dir"] + count + "_LMSRP" + ".xls"
-    last_lmsrp = ExcelFile(lmsrp_file).parse(Conf["price_sheet"])
+    last_lmsrp = pd.ExcelFile(lmsrp_file).parse(Conf["price_sheet"])
     last_lmsrp.set_index("Part Number", inplace = True)
     diff_lmsrp = lmsrp[count][["Part Number", "Designation EN", "Price [EUR]"]]
     diff_lmsrp.set_index("Part Number", inplace = True)
