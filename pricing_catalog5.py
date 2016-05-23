@@ -3,6 +3,7 @@
 import yaml
 import pandas as pd
 import sys
+import pprint
 '''
 Combine Product Group, Material Category Name and Disc.
 Check koef. k and calc new k_new & buy_p
@@ -19,6 +20,7 @@ print "Starting..."
 
 # load config
 category_conf = yaml.load(open("./base/category_conf.yml"))
+pprint.pprint(category_conf)
 cross = category_conf["cross"]
 
 # load partners data
