@@ -1,8 +1,8 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 '''
-Проверка коэф. и скидок партнерских прайс-листов 
-2016 May
+Объединение цен из прайс-листов 
+2016 July
 '''
 import sys
 import yaml
@@ -56,11 +56,7 @@ for count in countries:
     #lmsrp[count].to_excel(count + "_EUR_LMSRP_" + time.strftime("%Y%m%d") + ".xls", index=True)
 
 buy = msrp[["partnum", "partlabel", "partmsrp", "partrefp", "partxferbasep", "partdisc"]] # summary table for approval
-buy.rename(columns={"partmsrp": "MSRP",
-                    "partrefp": "Ref.",
-                    "partxferbasep": "Trans."
-                    }, inplace=True)
-                   
+
 buy.set_index("partnum", inplace=True)
 
 buy.loc[:,"Product Group"] = lmsrp["Russia"]["Product Group"]
@@ -73,8 +69,7 @@ def new_disc(Series):
     Out: u'MBA'
     '''
     if isnull(buy["Product Group"]).any(): # should be no empty items!
-        print "Error: empty product group..." # will be NaN if item is new and not in exported LMSRP
-        print buy[isnull(buy["Product Group"])] 
+        print "Error: empty product group..."
         sys.exit(0)
     return d.loc[Series]
 
@@ -83,12 +78,12 @@ def check_buy(df):
     global log
     report = []
     if (Par[Company]["cur"] == "EUR"): 
-        if (df[Company] < df["Ref."]):
-            report = [Company, df.name, df["partlabel"], str(df["Ref."]), str(df[Company])]
+        if (df[Company] < df["partrefp"]):
+            report = [Company, df.name, df["partlabel"], str(df["partrefp"]), str(df[Company])]
             log.append(" ".join(report))
     else:
-        if (df[Company]/cross < df["Ref."]): 
-            report = [Company, df.name, df["partlabel"], str(df["Ref."]), str(df[Company])]
+        if (df[Company]/cross < df["partrefp"]): 
+            report = [Company, df.name, df["partlabel"], str(df["partrefp"]), str(df[Company])]
             log.append(" ".join(report))
 
 def check_disc(df):
@@ -120,41 +115,15 @@ for Company in Partners:
     buy.loc[:, Company] = par_price[col4]
     buy.apply(check_buy, axis = 1) # - check after round to 2 digits
 
-buy.loc[:, "LMSRP_RU"] = lmsrp["Russia"]["Price [EUR]"]
-buy.loc[:, "LMSRP_KZ"] = lmsrp["Kazakhstan"]["Price [EUR]"]
-buy.loc[:, "LMSRP_UA"] = lmsrp["Ukraine"]["Price [EUR]"]
-
-# check dics & coef.
-buy_disc = msrp[["partnum", "partlabel"]] # check discounts
-buy_disc.set_index("partnum", inplace=True)
-buy_disc.loc[:,"Product Group"] = buy["Product Group"] 
-buy_disc.loc[:,"New disc"] = buy["Product Group"].apply(new_disc)
-buy_disc.loc[:,"LMSRP_RU"] = buy["LMSRP_RU"] 
-
-buy_koef = msrp[["partnum", "partlabel"]] # check k
-buy_koef.set_index("partnum", inplace=True)
-buy_koef.loc[:,"Material Category Name"] = buy["Material Category Name"] 
-
-for Company in Partners:
-    log.append(" ".join(Company))
-    cur  = Par[Company]["cur"]
-    country = Par[Company]["country"]
-    if (cur == "EUR"):
-        buy_disc[Company] = (100 - buy[Company] / lmsrp[country]["Price [EUR]"] *100).map(f) # round to 2 digits
-        buy_koef[Company] =  (buy[Company] / buy["Ref."]).map(f) 
-    else:
-        buy_disc[Company] = (100 - buy[Company] / lmsrp[country]["Price [EUR]"] *100 / cross).map(f) # round to 2 digits
-        buy_koef[Company] =  (buy[Company] / cross / buy["Ref."]).map(f) 
-    buy_disc.apply(check_disc, axis = 1)
+buy.loc[:, "lmsrp_ru"] = lmsrp["Russia"]["Price [EUR]"]
+buy.loc[:, "lmsrp_kz"] = lmsrp["Kazakhstan"]["Price [EUR]"]
+buy.loc[:, "lmsrp_ua"] = lmsrp["Ukraine"]["Price [EUR]"]
 
 #print buy
-writer = ExcelWriter("./ckeck_prices_EUR_USD_" + time.strftime("%Y%m%d") + ".xls")
+writer = ExcelWriter("./all_prices_EUR_USD_" + time.strftime("%Y%m%d") + ".xls")
 buy.reset_index(inplace=True)
 buy.to_excel(writer, "Prices", index=False)
-buy_disc.reset_index(inplace=True)
-buy_disc.to_excel(writer, "Discounts", index=False)
-buy_koef.reset_index(inplace=True)
-buy_koef.to_excel(writer, "Coefficients", index=False)
+
 try:
     writer.save()
 except:

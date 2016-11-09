@@ -26,6 +26,7 @@ except:
 pprint.pprint(Conf)
 cross = Conf["cross"]   # ex-rate eur/usd
 
+# choice lmsrp source
 if Conf["exported"] == True:
     print "\nExported price list!\n"
     msrp = pd.ExcelFile(Conf["exported_msrp_ru"]).parse(Conf["exported_sheet"])
